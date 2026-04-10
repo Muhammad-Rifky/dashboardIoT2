@@ -145,7 +145,7 @@ export default function UsersPage(){
       </div>
 
       {/* DESKTOP */}
-        <div className="hidden md:block overflow-x-auto">
+        <div className="hidden sm:block overflow-auto rounded-lg">
         <table className="w-full text-sm">
             <thead className="bg-gray-100">
             <tr>
@@ -171,7 +171,7 @@ export default function UsersPage(){
                         setSelectedName(u.name);
                         setShowConfirm(true);
                     }}
-                    className="mt-3 w-full bg-white text-red-500 hover:bg-red-500 px-4 py-2 shadow rounded hover:text-white cursor-pointer"
+                    className="mt-3 w-full bg-white text-red-500 hover:bg-red-500 px-4 py-2 shadow rounded hover:text-white cursor-pointer border border-red-500"
                     >
                     Hapus
                     </button>
@@ -182,7 +182,7 @@ export default function UsersPage(){
         </table>
         </div>
         {/* MOBILE */}
-        <div className="md:hidden space-y-4">
+        <div className="md:hidden space-y-4 ">
             {currentUser.map((u,i)=>(
                 <div key={u.id} className="border rounded-xl p-4 shadow-sm">
                 <p className="text-sm text-gray-500">#{i+1}</p>
@@ -200,7 +200,7 @@ export default function UsersPage(){
                     setSelectedName(u.name);
                     setShowConfirm(true);
                     }}
-                    className="mt-3 w-full bg-white text-red-500 hover:bg-red-500 px-4 py-2 shadow rounded hover:text-white cursor-pointer"
+                    className="mt-3 w-full bg-white text-red-500 hover:bg-red-500 px-4 py-2 shadow rounded hover:text-white cursor-pointer border border-red-500"
                 >
                     Hapus
                 </button>

@@ -1,6 +1,6 @@
 // api/devices/assign/route.js
-import db from "../../lib/db";
-import { getUser } from "../../lib/auth";
+import db from "../../../lib/db";
+import { getUser } from "../../../lib/auth";
 
 export async function PUT(req) {
   const user = await getUser();

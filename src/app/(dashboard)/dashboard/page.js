@@ -127,11 +127,13 @@ export default function DashboardPage() {
       {/* ===== NILAI RATA RATA ===== */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
 
-        <Card title="pH Rata-rata" value={data.average?.ph ?? "-"} unit="" />
-        <Card title="Suhu Rata-rata" value={data.average?.suhu ?? "-"} unit="°C" />
-        <Card title="TDS Rata-rata" value={data.average?.tds ?? "-"} unit="ppm" />
-        <Card title="Kekeruhan Rata-rata" value={data.average?.turbidity ?? "-"} unit="NTU" />
+        <Card title="pH Rata-rata" value={data.average?.ph} unit="" type="ph" />
 
+        <Card title="Suhu Rata-rata" value={data.average?.suhu} unit="°C" type="suhu" />
+
+        <Card title="TDS Rata-rata" value={data.average?.tds} unit="ppm" type="tds" />
+
+        <Card title="Kekeruhan Rata-rata" value={data.average?.turbidity} unit="NTU" type="turbidity" />
       </div>
 
       {/* ===== GRAFIK ===== */}
@@ -150,14 +152,20 @@ export default function DashboardPage() {
 
 function Card({ title, value, unit, type }) {
 
-  const getStatus = () => {
-    const val = parseFloat(String(value).replace(",", "."));
+  const getStatus = (latestValue, type) => {
+    const val = parseFloat(
+      String(latestValue)
+        .replace(",", ".")
+        .replace(/[^0-9.-]/g, "")
+    );
 
-    console.log("TYPE:", type, "VALUE:", value, "PARSED:", val);
+    const t = String(type).toLowerCase();
+
+    console.log("TYPE:", t, "VALUE:", latestValue, "PARSED:", val);
 
     if (isNaN(val)) return "normal";
 
-    switch (type) {
+    switch (t) {
       case "ph":
         if (val < 6 || val > 8.5) return "danger";
         if (val < 6.5 || val > 8) return "warning";
@@ -183,7 +191,8 @@ function Card({ title, value, unit, type }) {
     }
   };
 
-  const status = getStatus();
+  // 🔥 FIX: kirim parameter dengan benar
+  const status = getStatus(value, type);
 
   const colorMap = {
     normal: "text-blue-500",

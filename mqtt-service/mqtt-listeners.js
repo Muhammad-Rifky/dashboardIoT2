@@ -1,16 +1,58 @@
 const mqtt = require("mqtt");
 const mysql = require("mysql2");
 const http = require("http");
+const express = require("express");
 
 const { init, sendSensorData, sendDeviceStatus } = require("./socket-server");
 
+// =======================
+// SERVER (HTTP + WEBSOCKET)
+// =======================
 const server = http.createServer();
 init(server);
 
-server.listen(3001, () => {
-  console.log("WebSocket running on port 3001");
+// =======================
+// EXPRESS (API)
+// =======================
+const app = express();
+app.use(express.json());
+
+// 🔥 ENDPOINT UNTUK NEXT.JS (PENTING)
+app.post("/publish", (req, res) => {
+  const { topic, message } = req.body;
+
+  console.log("📨 REQUEST DARI NEXT:", topic, message);
+
+  if (!topic || !message) {
+    return res.status(400).json({
+      success: false,
+      message: "Topic dan message wajib diisi"
+    });
+  }
+
+  client.publish(topic, message, () => {
+    console.log("✅ MQTT TERKIRIM:", topic, message);
+
+    res.json({
+      success: true,
+      message: "Message published"
+    });
+  });
 });
 
+// 🔥 GABUNGKAN EXPRESS KE HTTP SERVER
+server.on("request", app);
+
+// =======================
+// START SERVER
+// =======================
+server.listen(3001, () => {
+  console.log("🚀 Server running on port 3001");
+});
+
+// =======================
+// MQTT CONNECT
+// =======================
 const client = mqtt.connect("mqtt://localhost:1883");
 
 const db = mysql.createConnection({
@@ -27,6 +69,9 @@ client.on("connect", () => {
   client.subscribe("iot/heartbeat");
 });
 
+// =======================
+// HANDLE MQTT MESSAGE
+// =======================
 client.on("message", (topic, message) => {
   console.log("📩 TOPIC:", topic);
   console.log("📦 MESSAGE:", message.toString());

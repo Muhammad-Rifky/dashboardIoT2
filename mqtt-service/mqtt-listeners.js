@@ -24,8 +24,8 @@ const client = mqtt.connect(MQTT_BROKER, {
 // =========================
 const db = mysql.createPool({
   host: "localhost",
-  user: "root",
-  password: "",
+  user: "iotuser",
+  password: "123456",
   database: "iot_system",
   waitForConnections: true,
   connectionLimit: 10,

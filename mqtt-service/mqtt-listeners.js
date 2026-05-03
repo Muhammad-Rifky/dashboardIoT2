@@ -5,129 +5,172 @@ const express = require("express");
 
 const { init, sendSensorData, sendDeviceStatus } = require("./socket-server");
 
-// =======================
-// SERVER (HTTP + WEBSOCKET)
-// =======================
+// =========================
+// CONFIG
+// =========================
+const MQTT_BROKER = "mqtt://192.168.20.17:1883";
+
+// =========================
+// MQTT CLIENT
+// =========================
+const client = mqtt.connect(MQTT_BROKER, {
+  clean: true,
+  connectTimeout: 4000,
+  reconnectPeriod: 2000,
+});
+
+// =========================
+// MYSQL CONNECTION
+// =========================
+const db = mysql.createPool({
+  host: "localhost",
+  user: "root",
+  password: "",
+  database: "iot_system",
+  waitForConnections: true,
+  connectionLimit: 10,
+  timezone: "Z", // 🔥 IMPORTANT: pakai UTC
+});
+
+// =========================
+// HTTP + SOCKET SERVER
+// =========================
 const server = http.createServer();
 init(server);
 
-// =======================
-// EXPRESS (API)
-// =======================
+// =========================
+// EXPRESS API
+// =========================
 const app = express();
 app.use(express.json());
 
-// 🔥 ENDPOINT UNTUK NEXT.JS (PENTING)
 app.post("/publish", (req, res) => {
   const { topic, message } = req.body;
 
-  console.log("📨 REQUEST DARI NEXT:", topic, message);
+  console.log("📨 NEXT REQUEST:", topic, message);
 
   if (!topic || !message) {
     return res.status(400).json({
       success: false,
-      message: "Topic dan message wajib diisi"
+      message: "topic & message wajib",
     });
   }
 
-  client.publish(topic, message, () => {
-    console.log("✅ MQTT TERKIRIM:", topic, message);
+  client.publish(topic, message, (err) => {
+    if (err) {
+      console.log("❌ MQTT PUBLISH FAIL:", err);
+      return res.status(500).json({
+        success: false,
+        message: "publish gagal",
+      });
+    }
 
-    res.json({
-      success: true,
-      message: "Message published"
-    });
+    console.log("✅ MQTT SENT:", topic);
+    res.json({ success: true });
   });
 });
 
-// 🔥 GABUNGKAN EXPRESS KE HTTP SERVER
 server.on("request", app);
 
-// =======================
+// =========================
 // START SERVER
-// =======================
+// =========================
 server.listen(3001, () => {
   console.log("🚀 Server running on port 3001");
 });
 
-// =======================
-// MQTT CONNECT
-// =======================
-const client = mqtt.connect("mqtt://localhost:1883");
-
-const db = mysql.createConnection({
-  host: "127.0.0.1",
-  user: "iotuser",
-  password: "123456",
-  database: "iot_system"
-});
-
+// =========================
+// MQTT EVENTS
+// =========================
 client.on("connect", () => {
-  console.log("✅ MQTT Connected");
+  console.log("✅ MQTT CONNECTED TO:", MQTT_BROKER);
 
-  client.subscribe("iot/sensor");
-  client.subscribe("iot/heartbeat");
+  client.subscribe("iot/#", (err) => {
+    if (err) {
+      console.log("❌ SUBSCRIBE ERROR:", err);
+    } else {
+      console.log("📡 SUBSCRIBED: iot/#");
+    }
+  });
 });
 
-// =======================
-// HANDLE MQTT MESSAGE
-// =======================
+client.on("error", (err) => {
+  console.log("❌ MQTT ERROR:", err.message);
+});
+
+client.on("reconnect", () => {
+  console.log("🔄 MQTT RECONNECTING...");
+});
+
+// =========================
+// MQTT MESSAGE HANDLER
+// =========================
 client.on("message", (topic, message) => {
-  console.log("📩 TOPIC:", topic);
-  console.log("📦 MESSAGE:", message.toString());
+  console.log("\n📩 TOPIC:", topic);
+  console.log("📦 RAW:", message.toString());
 
   let data;
+
   try {
     data = JSON.parse(message.toString());
   } catch (err) {
-    console.log("❌ JSON ERROR:", err);
+    console.log("❌ JSON ERROR:", err.message);
     return;
   }
 
-  // ===== HEARTBEAT =====
+  // =========================
+  // HEARTBEAT
+  // =========================
   if (topic === "iot/heartbeat") {
-    console.log("🔥 HEARTBEAT MASUK:", data.device_id);
+    console.log("💓 HEARTBEAT:", data.device_id);
 
     db.query(
       `UPDATE devices 
-       SET status='online', last_seen=NOW()
-       WHERE device_id=?`,
+       SET last_seen = UTC_TIMESTAMP()
+       WHERE device_id = ?`,
       [data.device_id],
-      (err, result) => {
-        if (err) console.log("❌ DB ERROR:", err);
-        else console.log("✅ HEARTBEAT UPDATE:", result);
+      (err) => {
+        if (err) console.log("❌ DB ERROR HEARTBEAT:", err);
+        else console.log("✅ DEVICE UPDATED (heartbeat - UTC)");
       }
     );
 
     return;
   }
 
-  // ===== SENSOR =====
+  // =========================
+  // SENSOR DATA
+  // =========================
   if (topic === "iot/sensor") {
-    console.log("📊 SENSOR MASUK:", data.device_id);
+    console.log("📊 SENSOR:", data.device_id);
 
     db.query(
-      `INSERT INTO sensor_data
-       (device_id, ph, tds, suhu, turbidity)
-       VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO sensor_data 
+       (device_id, ph, tds, suhu, turbidity_adc, turbidity_status) 
+       VALUES (?, ?, ?, ?, ?, ?)`,
       [
         data.device_id,
         data.ph,
         data.tds,
         data.suhu,
-        data.turbidity
+        data.turbidity_adc,
+        data.turbidity_status,
       ],
-      (err, result) => {
-        if (err) console.log("❌ DB ERROR:", err);
-        else console.log("✅ SENSOR DATA INSERTED:", result);
+      (err) => {
+        if (err) console.log("❌ DB ERROR SENSOR:", err);
+        else console.log("✅ SENSOR SAVED");
       }
     );
 
     db.query(
       `UPDATE devices 
-       SET status='online', last_seen=NOW()
-       WHERE device_id=?`,
-      [data.device_id]
+       SET last_seen = UTC_TIMESTAMP()
+       WHERE device_id = ?`,
+      [data.device_id],
+      (err) => {
+        if (err) console.log("❌ DB ERROR UPDATE DEVICE:", err);
+        else console.log("✅ DEVICE UPDATED (sensor - UTC)");
+      }
     );
 
     sendSensorData(data);

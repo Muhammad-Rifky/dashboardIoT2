@@ -8,7 +8,7 @@ const { init, sendSensorData, sendDeviceStatus } = require("./socket-server");
 // =========================
 // CONFIG
 // =========================
-const MQTT_BROKER = "mqtt://192.168.20.17:1883";
+const MQTT_BROKER = "mqtt://76.13.192.195:1883";
 
 // =========================
 // MQTT CLIENT

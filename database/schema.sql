@@ -1,0 +1,35 @@
+CREATE DATABASE iot_system;
+USE iot_system;
+
+-- USERS
+CREATE TABLE users (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100),
+  email VARCHAR(100) UNIQUE,
+  password VARCHAR(255),
+  role VARCHAR(50) DEFAULT 'admin',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- DEVICES
+CREATE TABLE devices (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  device_id VARCHAR(100) UNIQUE,
+  name VARCHAR(100),
+  location VARCHAR(100),
+  status VARCHAR(20) DEFAULT 'offline',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- SENSOR DATA
+CREATE TABLE sensor_data (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  device_id VARCHAR(100),
+  ph FLOAT,
+  tds FLOAT,
+  suhu FLOAT,
+  turbidity FLOAT,
+  fuzzy_output FLOAT,
+  action VARCHAR(50),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
